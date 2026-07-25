@@ -48,6 +48,26 @@ try {
   check("初期状態では何も畳まれていない", placeholdersBefore === 0,
     `placeholders=${placeholdersBefore}`);
 
+  const topLineHittable = await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    const line = document.querySelector(".cm-line");
+    if (line === null) return false;
+    const r = line.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + 5, r.top + 5);
+    return hit !== null && (line.contains(hit) || hit === line);
+  });
+  check("ページ先頭で 1 行目がヘッダに隠れない", topLineHittable);
+
+  const highlightApplied = await page.evaluate(() => {
+    const content = document.querySelector(".cm-content");
+    if (content === null) return false;
+    const base = getComputedStyle(content).color;
+    return [...document.querySelectorAll(".cm-line span")].some(
+      (s) => getComputedStyle(s).color !== base,
+    );
+  });
+  check("シンタックスハイライトが適用される (GitHub の配色変数)", highlightApplied);
+
   const clickAction = async (key) => {
     await page.locator(`[data-gfv-action="${key}"]`).click();
     await page.waitForTimeout(300);

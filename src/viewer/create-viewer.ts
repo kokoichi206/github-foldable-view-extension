@@ -4,12 +4,13 @@ import {
   foldService,
   foldEffect,
   unfoldAll,
+  syntaxHighlighting,
   LanguageDescription,
 } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
 import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView, lineNumbers } from "@codemirror/view";
-import { oneDark } from "@codemirror/theme-one-dark";
+import { githubHighlightStyle } from "./github-highlight";
 import { computeFoldRanges, type FoldRange } from "./indent-fold";
 
 export interface FoldableViewer {
@@ -20,10 +21,12 @@ export interface FoldableViewer {
   destroy: () => void;
 }
 
+/* 配色は GitHub がページに公開している CSS 変数を参照し、テーマ切替に自動追従する */
 const baseTheme = EditorView.theme({
   "&": {
     fontSize: "12px",
     backgroundColor: "transparent",
+    color: "var(--fgColor-default, #1f2328)",
   },
   ".cm-content": {
     fontFamily:
@@ -32,19 +35,18 @@ const baseTheme = EditorView.theme({
   ".cm-gutters": {
     backgroundColor: "transparent",
     border: "none",
+    color: "var(--fgColor-muted, #59636e)",
   },
   ".cm-lineNumbers .cm-gutterElement": {
     minWidth: "48px",
     paddingRight: "12px",
   },
+  ".cm-foldPlaceholder": {
+    backgroundColor: "var(--bgColor-muted, #f6f8fa)",
+    border: "1px solid var(--borderColor-default, #d1d9e0)",
+    color: "var(--fgColor-muted, #59636e)",
+  },
 });
-
-function isDarkMode(): boolean {
-  const mode = document.documentElement.getAttribute("data-color-mode");
-  if (mode === "dark") return true;
-  if (mode === "light") return false;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches;
-}
 
 export async function createViewer(
   parent: HTMLElement,
@@ -82,7 +84,7 @@ export async function createViewer(
         }),
         languageCompartment.of([]),
         baseTheme,
-        isDarkMode() ? oneDark : [],
+        syntaxHighlighting(githubHighlightStyle),
         EditorState.readOnly.of(true),
         EditorView.editable.of(false),
         EditorView.lineWrapping,

@@ -95,6 +95,10 @@ async function activate(): Promise<void> {
 
   const panel = document.createElement("div");
   panel.id = PANEL_ID;
+  /* section の margin-top は、絶対描画されるファイルヘッダ（Code/Blame バー）用の
+     確保帯。section を非表示にすると消えるため、パネルへ引き継がないと
+     先頭行がヘッダの裏に隠れる */
+  panel.style.marginTop = getComputedStyle(section).marginTop;
   section.insertAdjacentElement("beforebegin", panel);
   section.style.display = "none";
 
