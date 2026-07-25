@@ -1,0 +1,89 @@
+// dist の拡張を実 Chrome に読み込み、公開リポの実ページで折りたたみ動作を検証する。
+// 実行: pnpm build && pnpm e2e
+import { chromium } from "playwright";
+import { mkdtempSync, mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+
+const TARGET_URL =
+  "https://github.com/kokoichi206/dotfiles/blob/main/superwhisper/settings.json";
+const SCREENSHOT_DIR = "docs/verify";
+
+const failures = [];
+const check = (name, ok, detail = "") => {
+  console.log(`${ok ? "PASS" : "FAIL"}: ${name}${detail ? ` (${detail})` : ""}`);
+  if (!ok) failures.push(name);
+};
+
+const extensionPath = resolve("dist");
+mkdirSync(SCREENSHOT_DIR, { recursive: true });
+
+const context = await chromium.launchPersistentContext(
+  mkdtempSync(join(tmpdir(), "gfv-e2e-")),
+  {
+    // 拡張の読み込みは headless shell では動かないため headed で実行する
+    headless: false,
+    args: [
+      `--disable-extensions-except=${extensionPath}`,
+      `--load-extension=${extensionPath}`,
+    ],
+  },
+);
+
+try {
+  const page = context.pages()[0] ?? (await context.newPage());
+  await page.goto(TARGET_URL, { waitUntil: "domcontentloaded" });
+
+  const activateButton = page.locator('[data-gfv-action="activate"]');
+  await activateButton.waitFor({ state: "visible", timeout: 20_000 });
+  check("blob ページでトグルボタンが出る", true);
+
+  await activateButton.click();
+  await page.locator(".cm-editor").waitFor({ state: "visible", timeout: 10_000 });
+  check("トグルで CodeMirror ビューアに切り替わる", true);
+  await page.waitForTimeout(800); // 言語チャンクの遅延ロードを待ってから撮影
+  await page.screenshot({ path: `${SCREENSHOT_DIR}/1-expanded.png` });
+
+  const placeholdersBefore = await page.locator(".cm-foldPlaceholder").count();
+  check("初期状態では何も畳まれていない", placeholdersBefore === 0,
+    `placeholders=${placeholdersBefore}`);
+
+  const clickAction = async (key) => {
+    await page.locator(`[data-gfv-action="${key}"]`).click();
+    await page.waitForTimeout(300);
+  };
+
+  await clickAction("l2");
+  const placeholdersL2 = await page.locator(".cm-foldPlaceholder").count();
+  check("L2 で折りたたみが発生する", placeholdersL2 > 0,
+    `placeholders=${placeholdersL2}`);
+  await page.screenshot({ path: `${SCREENSHOT_DIR}/2-fold-l2.png` });
+
+  await clickAction("l1");
+  const placeholdersL1 = await page.locator(".cm-foldPlaceholder").count();
+  check("L1 は L2 より浅く畳む (placeholder が減る)",
+    placeholdersL1 > 0 && placeholdersL1 < placeholdersL2,
+    `L1=${placeholdersL1}, L2=${placeholdersL2}`);
+  await page.screenshot({ path: `${SCREENSHOT_DIR}/3-fold-l1.png` });
+
+  await clickAction("expand");
+  const placeholdersExpanded = await page.locator(".cm-foldPlaceholder").count();
+  check("すべて展開で元に戻る", placeholdersExpanded === 0,
+    `placeholders=${placeholdersExpanded}`);
+
+  await page.locator('[data-gfv-action="deactivate"]').click();
+  await page.waitForTimeout(300);
+  const editorGone = (await page.locator(".cm-editor").count()) === 0;
+  const githubVisible = await page
+    .locator("#read-only-cursor-text-area")
+    .evaluate((el) => el.closest("section")?.style.display !== "none");
+  check("GitHub 標準表示に戻せる", editorGone && githubVisible);
+} finally {
+  await context.close();
+}
+
+if (failures.length > 0) {
+  console.error(`\n${failures.length} 件失敗: ${failures.join(", ")}`);
+  process.exit(1);
+}
+console.log("\nすべての検証に成功。スクリーンショット: " + SCREENSHOT_DIR);
