@@ -5,13 +5,12 @@ import {
   foldEffect,
   unfoldAll,
   syntaxHighlighting,
-  LanguageDescription,
 } from "@codemirror/language";
-import { languages } from "@codemirror/language-data";
-import { Compartment, EditorState } from "@codemirror/state";
+import { EditorState } from "@codemirror/state";
 import { EditorView, lineNumbers } from "@codemirror/view";
 import { githubHighlightStyle } from "./github-highlight";
 import { computeFoldRanges, type FoldRange } from "./indent-fold";
+import { languageForFilename } from "./languages";
 
 export interface FoldableViewer {
   view: EditorView;
@@ -51,11 +50,11 @@ const baseTheme = EditorView.theme({
   },
 });
 
-export async function createViewer(
+export function createViewer(
   parent: HTMLElement,
   text: string,
   filename: string,
-): Promise<FoldableViewer> {
+): FoldableViewer {
   const lines = text.split("\n");
   const ranges = computeFoldRanges(lines);
   const rangeByStartLine = new Map<number, FoldRange>(
@@ -68,8 +67,6 @@ export async function createViewer(
     if (range === undefined || range.endLine > state.doc.lines) return null;
     return { from: line.to, to: state.doc.line(range.endLine).to };
   });
-
-  const languageCompartment = new Compartment();
 
   const view = new EditorView({
     parent,
@@ -85,7 +82,7 @@ export async function createViewer(
           openText: "⌄",
           closedText: "›",
         }),
-        languageCompartment.of([]),
+        languageForFilename(filename) ?? [],
         baseTheme,
         syntaxHighlighting(githubHighlightStyle),
         EditorState.readOnly.of(true),
@@ -94,18 +91,6 @@ export async function createViewer(
       ],
     }),
   });
-
-  const description = LanguageDescription.matchFilename(languages, filename);
-  if (description !== null) {
-    description
-      .load()
-      .then((support) => {
-        view.dispatch({ effects: languageCompartment.reconfigure(support) });
-      })
-      .catch(() => {
-        /* ハイライトは補助機能なので、言語ロード失敗時は plain text 表示のまま続行する */
-      });
-  }
 
   const foldRanges = (targets: FoldRange[]): void => {
     unfoldAll(view);

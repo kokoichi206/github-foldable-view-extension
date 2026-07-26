@@ -17,7 +17,6 @@ let active: {
   panel: HTMLElement;
   hiddenSection: HTMLElement;
 } | null = null;
-let activating = false;
 
 function autoActivateEnabled(): boolean {
   return localStorage.getItem(AUTO_PREF_KEY) !== "off";
@@ -67,7 +66,7 @@ function renderControls(): void {
     controls.dataset.gfvState = "off";
     addButton("activate", "⌄ Foldable view", () => {
       localStorage.setItem(AUTO_PREF_KEY, "on");
-      void activate();
+      activate();
     });
     return;
   }
@@ -93,7 +92,7 @@ function ensureControls(): void {
     return;
   }
   if (existing !== null) {
-    if (active === null && autoActivateEnabled()) void activate();
+    if (active === null && autoActivateEnabled()) activate();
     return;
   }
 
@@ -102,15 +101,14 @@ function ensureControls(): void {
   controls.id = CONTROLS_ID;
   document.body.appendChild(controls);
   renderControls();
-  if (autoActivateEnabled()) void activate();
+  if (autoActivateEnabled()) activate();
 }
 
-async function activate(): Promise<void> {
-  if (activating || active !== null) return;
+function activate(): void {
+  if (active !== null) return;
   const textarea = findSourceTextarea();
   const section = findCodeSection();
   if (textarea === null || section === null) return;
-  activating = true;
 
   const panel = document.createElement("div");
   panel.id = PANEL_ID;
@@ -121,12 +119,8 @@ async function activate(): Promise<void> {
   section.insertAdjacentElement("beforebegin", panel);
   section.style.display = "none";
 
-  try {
-    const viewer = await createViewer(panel, textarea.value, currentFilename());
-    active = { viewer, panel, hiddenSection: section };
-  } finally {
-    activating = false;
-  }
+  const viewer = createViewer(panel, textarea.value, currentFilename());
+  active = { viewer, panel, hiddenSection: section };
   renderControls();
 }
 

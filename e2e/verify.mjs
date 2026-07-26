@@ -7,6 +7,8 @@ import { join, resolve } from "node:path";
 
 const TARGET_URL =
   "https://github.com/kokoichi206/dotfiles/blob/main/superwhisper/settings.json";
+const GO_TARGET_URL =
+  "https://github.com/kokoichi206/slack-cli/blob/main/internal/config/project.go";
 const SCREENSHOT_DIR = "docs/verify";
 
 const failures = [];
@@ -32,6 +34,12 @@ const context = await chromium.launchPersistentContext(
 
 try {
   const page = context.pages()[0] ?? (await context.newPage());
+  const cspViolations = [];
+  page.on("console", (msg) => {
+    if (msg.text().includes("Content Security Policy")) {
+      cspViolations.push(msg.text());
+    }
+  });
   await page.goto(TARGET_URL, { waitUntil: "domcontentloaded" });
 
   await page.locator(".cm-editor").waitFor({ state: "visible", timeout: 20_000 });
@@ -105,6 +113,23 @@ try {
   await page.locator('[data-gfv-action="activate"]').click();
   await page.locator(".cm-editor").waitFor({ state: "visible", timeout: 10_000 });
   check("手動でもう一度 Foldable view にできる", true);
+
+  await page.goto(GO_TARGET_URL, { waitUntil: "domcontentloaded" });
+  await page.locator(".cm-editor").waitFor({ state: "visible", timeout: 20_000 });
+  await page.waitForTimeout(500);
+  const goHighlighted = await page.evaluate(() => {
+    const content = document.querySelector(".cm-content");
+    if (content === null) return false;
+    const base = getComputedStyle(content).color;
+    return [...document.querySelectorAll(".cm-line span")].some(
+      (s) => getComputedStyle(s).color !== base,
+    );
+  });
+  check("Go ファイルでもハイライトが当たる (静的バンドル)", goHighlighted);
+  await page.screenshot({ path: `${SCREENSHOT_DIR}/4-go-highlight.png` });
+
+  check("CSP 違反が発生しない", cspViolations.length === 0,
+    `${cspViolations.length} 件`);
 } finally {
   await context.close();
 }
