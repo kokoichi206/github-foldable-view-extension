@@ -8,12 +8,20 @@ import {
 
 const CONTROLS_ID = "gfv-controls";
 const PANEL_ID = "gfv-panel";
+/* blob ページではデフォルトで Foldable view を開く。
+   「GitHub 表示に戻す」を押したらオフを記憶し、次からは自動で開かない */
+const AUTO_PREF_KEY = "gfv-auto-activate";
 
 let active: {
   viewer: FoldableViewer;
   panel: HTMLElement;
   hiddenSection: HTMLElement;
 } | null = null;
+let activating = false;
+
+function autoActivateEnabled(): boolean {
+  return localStorage.getItem(AUTO_PREF_KEY) !== "off";
+}
 
 function injectStylesOnce(): void {
   if (document.getElementById("gfv-style") !== null) return;
@@ -33,7 +41,6 @@ function injectStylesOnce(): void {
   font-size: 12px; cursor: pointer;
   box-shadow: var(--shadow-resting-small, 0 1px 3px rgba(0,0,0,.2));
 }
-#${PANEL_ID} { border: 1px solid var(--borderColor-default, #d1d9e0); border-radius: 6px; }
 #${PANEL_ID} .cm-editor { max-width: 100%; }
 `;
   document.head.appendChild(style);
@@ -58,7 +65,10 @@ function renderControls(): void {
 
   if (active === null) {
     controls.dataset.gfvState = "off";
-    addButton("activate", "⌄ Foldable view", () => void activate());
+    addButton("activate", "⌄ Foldable view", () => {
+      localStorage.setItem(AUTO_PREF_KEY, "on");
+      void activate();
+    });
     return;
   }
 
@@ -69,7 +79,10 @@ function renderControls(): void {
   addButton("l2", "L2", () => viewer.foldToLevel(2));
   addButton("l3", "L3", () => viewer.foldToLevel(3));
   addButton("fold-all", "すべて畳む", () => viewer.foldAllRanges());
-  addButton("deactivate", "GitHub 表示に戻す", deactivate);
+  addButton("deactivate", "GitHub 表示に戻す", () => {
+    localStorage.setItem(AUTO_PREF_KEY, "off");
+    deactivate();
+  });
 }
 
 function ensureControls(): void {
@@ -79,19 +92,25 @@ function ensureControls(): void {
     existing?.remove();
     return;
   }
-  if (existing !== null) return;
+  if (existing !== null) {
+    if (active === null && autoActivateEnabled()) void activate();
+    return;
+  }
 
   injectStylesOnce();
   const controls = document.createElement("div");
   controls.id = CONTROLS_ID;
   document.body.appendChild(controls);
   renderControls();
+  if (autoActivateEnabled()) void activate();
 }
 
 async function activate(): Promise<void> {
+  if (activating || active !== null) return;
   const textarea = findSourceTextarea();
   const section = findCodeSection();
-  if (textarea === null || section === null || active !== null) return;
+  if (textarea === null || section === null) return;
+  activating = true;
 
   const panel = document.createElement("div");
   panel.id = PANEL_ID;
@@ -102,8 +121,12 @@ async function activate(): Promise<void> {
   section.insertAdjacentElement("beforebegin", panel);
   section.style.display = "none";
 
-  const viewer = await createViewer(panel, textarea.value, currentFilename());
-  active = { viewer, panel, hiddenSection: section };
+  try {
+    const viewer = await createViewer(panel, textarea.value, currentFilename());
+    active = { viewer, panel, hiddenSection: section };
+  } finally {
+    activating = false;
+  }
   renderControls();
 }
 

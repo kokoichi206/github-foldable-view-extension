@@ -34,13 +34,8 @@ try {
   const page = context.pages()[0] ?? (await context.newPage());
   await page.goto(TARGET_URL, { waitUntil: "domcontentloaded" });
 
-  const activateButton = page.locator('[data-gfv-action="activate"]');
-  await activateButton.waitFor({ state: "visible", timeout: 20_000 });
-  check("blob ページでトグルボタンが出る", true);
-
-  await activateButton.click();
-  await page.locator(".cm-editor").waitFor({ state: "visible", timeout: 10_000 });
-  check("トグルで CodeMirror ビューアに切り替わる", true);
+  await page.locator(".cm-editor").waitFor({ state: "visible", timeout: 20_000 });
+  check("blob ページで自動的に Foldable view になる", true);
   await page.waitForTimeout(800); // 言語チャンクの遅延ロードを待ってから撮影
   await page.screenshot({ path: `${SCREENSHOT_DIR}/1-expanded.png` });
 
@@ -98,6 +93,18 @@ try {
     .locator("#read-only-cursor-text-area")
     .evaluate((el) => el.closest("section")?.style.display !== "none");
   check("GitHub 標準表示に戻せる", editorGone && githubVisible);
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page
+    .locator('[data-gfv-action="activate"]')
+    .waitFor({ state: "visible", timeout: 20_000 });
+  await page.waitForTimeout(1500);
+  const staysOff = (await page.locator(".cm-editor").count()) === 0;
+  check("戻した後はリロードしても自動起動しない (オフを記憶)", staysOff);
+
+  await page.locator('[data-gfv-action="activate"]').click();
+  await page.locator(".cm-editor").waitFor({ state: "visible", timeout: 10_000 });
+  check("手動でもう一度 Foldable view にできる", true);
 } finally {
   await context.close();
 }

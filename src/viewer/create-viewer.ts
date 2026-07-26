@@ -21,7 +21,8 @@ export interface FoldableViewer {
   destroy: () => void;
 }
 
-/* 配色は GitHub がページに公開している CSS 変数を参照し、テーマ切替に自動追従する */
+/* 配色は GitHub がページに公開している CSS 変数を参照し、テーマ切替に自動追従する。
+   フォント・行高・ガター幅は本家コードビューの実測値 (12px/20px, 行番号 40px + 右 16px) に合わせる */
 const baseTheme = EditorView.theme({
   "&": {
     fontSize: "12px",
@@ -31,15 +32,17 @@ const baseTheme = EditorView.theme({
   ".cm-content": {
     fontFamily:
       'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
+    lineHeight: "20px",
   },
   ".cm-gutters": {
     backgroundColor: "transparent",
     border: "none",
     color: "var(--fgColor-muted, #59636e)",
+    lineHeight: "20px",
   },
   ".cm-lineNumbers .cm-gutterElement": {
-    minWidth: "48px",
-    paddingRight: "12px",
+    minWidth: "40px",
+    paddingRight: "16px",
   },
   ".cm-foldPlaceholder": {
     backgroundColor: "var(--bgColor-muted, #f6f8fa)",
