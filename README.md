@@ -1,63 +1,69 @@
-# github-foldable-view-extension
+# Foldable View for GitHub
 
-GitHub のファイルビューにコード折りたたみを追加するブラウザ拡張（MV3）。
-Chrome Web Store 上の名称は **Foldable View for GitHub**。
+English | [日本語](./README.ja.md)
 
-GitHub のネイティブ折りたたみはシンボル解析が効く言語（Go 等）に限られ、
-JSON / YAML などの設定・データ系ファイルには無い。またネイティブにあっても
-個別セクションのクリックのみで、深さ指定の一括折りたたみはできない。
-DOM は仮想スクロールのため行を隠す方式の既存拡張は大きいファイルで壊れる。
-この拡張は GitHub が保持している全文（`#read-only-cursor-text-area`）を読み、
-CodeMirror 6 の折りたたみビューアに差し替える方式を取る。
+Code folding for the GitHub file view: fold by indent, collapse to a chosen depth.
 
-## 機能
+![A JSON file on github.com collapsed to depth 2](docs/verify/2-fold-l2.png)
 
-- blob ページ右下のボタンで GitHub 標準表示と切り替え
-- インデントベースの折りたたみ（言語非依存。Go / Python / YAML / JSON いずれも可）
-- L1 / L2 / L3 ボタンで指定の深さまで一括折りたたみ
-- 拡張子からのシンタックスハイライト（対応言語は静的にバンドル）
-- ダーク / ライトモード追従
-- PR の Files changed ページで、diff から変更行ハイライト付きの全文ビューに切り替え
+## Why this exists
 
-## 開発
+GitHub's built-in folding only covers languages it can analyse symbolically, so
+configuration and data files such as JSON and YAML get nothing at all. Even where
+it does work, sections open and close one click at a time — there is no way to
+collapse a whole file to a given depth.
 
-```sh
-pnpm install
-pnpm build        # tsc --noEmit && vite build → dist/
-pnpm test         # 折りたたみ範囲計算のユニットテスト
-pnpm e2e          # dist を実 Chrome に読み込み、実ページで動作検証
-pnpm assets       # icons/icon.svg と store/promo-tile.html から PNG を再生成
-```
+Extensions that fold by hiding DOM rows break on large files, because GitHub's
+code view is virtually scrolled. This one instead reads the source text GitHub
+already keeps in the page and renders it with CodeMirror 6.
 
-`pnpm e2e` のスクリーンショットは `docs/verify/` に 1280x800 で出力され、
-そのまま Chrome Web Store のスクリーンショットとして使える。
+## Features
 
-## インストール（開発版）
+- Folds by indentation, so it behaves the same in Go, Python, YAML, JSON,
+  Markdown, and anything else that expresses structure through indentation
+- `L1` / `L2` / `L3` collapse the whole file to a chosen depth in one click
+- Syntax highlighting chosen from the file extension
+- Follows GitHub's light and dark themes
+- Switches back to GitHub's own view at any time, and remembers the choice
+- Turns a pull request diff into the full source with the changed lines
+  highlighted, so that it can be folded too
 
-1. `pnpm build`
-2. `chrome://extensions` → デベロッパーモード → 「パッケージ化されていない拡張機能を読み込む」→ `dist/` を選択
+## Collapse to a depth
 
-## リリース
+`L2` keeps two levels open, `L1` collapses everything but the outermost level.
+`Expand all` and `Fold all` are the two extremes.
 
-拡張のバージョンは `package.json` の `version` が唯一の出所で、
-manifest・タグ・zip はすべてそこから導出される。
+![The same file collapsed to depth 1](docs/verify/3-fold-l1.png)
 
-1. `package.json` の `version` を上げて main にマージする
-2. Actions から `tag` ワークフローを実行する
+## Any indented language
 
-`tag` がタグを打ち、`release` が zip 化 → GitHub Release 作成 →
-Chrome Web Store への公開まで行う。
+Highlighting comes from the file extension and folding comes from indentation, so
+tab-indented Go and space-indented YAML behave the same way.
 
-初回だけは Chrome Web Store の審査を通すために手動アップロードが必要で、
-そこで発行される拡張 ID を `.github/workflows/release.yml` の
-`CWS_EXTENSION_ID` に設定する。掲載文・権限の申告内容は
-[`store/listing.md`](./store/listing.md) にある。
+![A Go file with syntax highlighting and folded blocks](docs/verify/4-go-highlight.png)
 
-CI が使う設定値:
+## Pull requests
 
-- `vars.CWS_PUBLISHER_ID` — Chrome Web Store の Publisher ID（機微でないため variable）
-- `secrets.GOOGLE_SA_KEY_JSON` — Chrome Web Store API 用サービスアカウントの JSON 鍵
+A diff only contains fragments, so it cannot be folded by indentation. On the
+"Files changed" page every file gets a `Foldable` button that swaps the diff for
+the full source of the head revision, with the added lines highlighted. The same
+depth controls apply from there.
 
-## ライセンス
+![A pull request file shown as full source with added lines highlighted](docs/verify/5-pr-files.png)
+
+## Install
+
+The Chrome Web Store listing is pending review. Until it is live, build from
+source and load `dist/` as an unpacked extension — see
+[DEVELOPMENT.md](./DEVELOPMENT.md).
+
+## Privacy
+
+No data is collected, and nothing is sent to the developer or to any third party.
+Everything runs locally in your browser, and no remotely hosted code is loaded or
+executed. See the
+[privacy policy](https://kokoichi206.github.io/github-foldable-view-extension/privacy-policy.html).
+
+## License
 
 [MIT](./LICENSE)
