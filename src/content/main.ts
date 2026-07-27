@@ -50,6 +50,14 @@ function injectStylesOnce(): void {
   box-shadow: var(--shadow-resting-small, 0 1px 3px rgba(0,0,0,.2));
 }
 #${PANEL_ID} .cm-editor { max-width: 100%; }
+.gfv-pr-toggle,
+.gfv-pr-controls button {
+  padding: 3px 12px; font-size: 12px; border-radius: 6px;
+  border: 1px solid var(--borderColor-default, #d1d9e0);
+  background: var(--bgColor-default, #fff);
+  color: var(--fgColor-default, #1f2328);
+  cursor: pointer;
+}
 .gfv-pr-toggle { margin-right: 8px; }
 .gfv-pr-controls {
   display: flex; gap: 6px; align-items: center;
@@ -164,7 +172,6 @@ function prFoldControls(viewer: FoldableViewer): HTMLElement {
   const addButton = (action: string, label: string, handler: () => void): void => {
     const b = document.createElement("button");
     b.type = "button";
-    b.className = "btn btn-sm";
     b.dataset.gfvPrAction = action;
     b.textContent = label;
     b.addEventListener("click", handler);
@@ -224,23 +231,32 @@ async function togglePrViewer(
   }
 }
 
-function ensurePrFoldButtons(): void {
-  if (!isPrFilesPage()) return;
-  injectStylesOnce();
-  for (const entry of findDiffFileEntries()) {
-    if (entry.deleted) continue;
-    const actions = findFileActions(entry.container);
-    if (actions === null) continue;
-    if (actions.querySelector(`.${PR_TOGGLE_CLASS}`) !== null) continue;
+/* findDiffFileEntries が非同期 (React 版 UI の payload 解析) になったため、
+   ポーリングと重なって二重挿入しないよう実行中はスキップする */
+let prScanInFlight = false;
 
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `btn btn-sm ${PR_TOGGLE_CLASS}`;
-    button.textContent = "Foldable";
-    button.addEventListener("click", () => {
-      void togglePrViewer(entry, button);
-    });
-    actions.prepend(button);
+async function ensurePrFoldButtons(): Promise<void> {
+  if (!isPrFilesPage() || prScanInFlight) return;
+  prScanInFlight = true;
+  try {
+    injectStylesOnce();
+    for (const entry of await findDiffFileEntries()) {
+      if (entry.deleted) continue;
+      const actions = findFileActions(entry.container);
+      if (actions === null) continue;
+      if (actions.querySelector(`.${PR_TOGGLE_CLASS}`) !== null) continue;
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = PR_TOGGLE_CLASS;
+      button.textContent = "Foldable";
+      button.addEventListener("click", () => {
+        void togglePrViewer(entry, button);
+      });
+      actions.prepend(button);
+    }
+  } finally {
+    prScanInFlight = false;
   }
 }
 
@@ -248,7 +264,7 @@ function reinit(): void {
   if (active !== null) deactivate();
   document.getElementById(CONTROLS_ID)?.remove();
   ensureControls();
-  ensurePrFoldButtons();
+  void ensurePrFoldButtons();
 }
 
 /* GitHub は soft navigation (turbo) で遷移し、コード部は React ハイドレーション後に
@@ -265,8 +281,8 @@ setInterval(() => {
     return;
   }
   ensureControls();
-  ensurePrFoldButtons();
+  void ensurePrFoldButtons();
 }, 500);
 
 ensureControls();
-ensurePrFoldButtons();
+void ensurePrFoldButtons();
