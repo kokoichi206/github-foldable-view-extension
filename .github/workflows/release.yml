@@ -72,10 +72,12 @@ jobs:
             exit 1
           fi
 
-      # Chrome Web Store は manifest.json が zip 直下にあることを要求する
+      # Chrome Web Store は manifest.json が zip 直下にあることを要求する。
+      # .vite/ は crxjs がビルド時にチャンクを解決するためだけのもので拡張は参照しない。
+      # ci.yml の artifact (upload-artifact が隠しファイルを除外する) と中身を揃えるため除く
       - name: Create zip
         run: |
-          cd dist && zip -r "../foldable-view-for-github-${TAG_REF}.zip" .
+          cd dist && zip -r "../foldable-view-for-github-${TAG_REF}.zip" . -x '.vite/*'
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
