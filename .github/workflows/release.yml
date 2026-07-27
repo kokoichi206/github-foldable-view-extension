@@ -9,7 +9,7 @@ on:
       tag:
         required: true
         type: string
-  # tag.yml が落ちてタグだけ残った場合、そのタグを指定して release を回し直す口
+  # tag.yml が落ちてタグだけ残った場合、そのタグを指定して release を回し直す口。
   workflow_dispatch:
     inputs:
       tag:
@@ -21,17 +21,16 @@ permissions:
   contents: write
 
 env:
-  # ストア URL の末尾と同じ値
+  # ストア URL の末尾と同じ値。
   CWS_EXTENSION_ID: kkjejoecddgihebkjgkafmaghopgicoe
 
 jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # タグ名にはシェルのメタ文字が使えるため、run へは env 経由でのみ渡すこと
+    # タグ名にはシェルのメタ文字が使えるため、run へは env 経由でのみ渡すこと。
     env:
       TAG_REF: ${{ inputs.tag || github.ref_name }}
-      # secrets は step の if から参照できないため、job の env で真偽値に畳む
       HAS_CWS_CREDENTIALS: ${{ secrets.GOOGLE_SA_KEY_JSON != '' && vars.CWS_PUBLISHER_ID != '' }}
     steps:
       - name: Checkout
@@ -83,7 +82,7 @@ jobs:
 
       # Chrome Web Store は manifest.json が zip 直下にあることを要求する。
       # .vite/ は crxjs がビルド時にチャンクを解決するためだけのもので拡張は参照しない。
-      # ci.yml の artifact (upload-artifact が隠しファイルを除外する) と中身を揃えるため除く
+      # ci.yml の artifact (upload-artifact が隠しファイルを除外する) と中身を揃えるため除く。
       - name: Create zip
         run: |
           cd dist && zip -r "../foldable-view-for-github-${TAG_REF}.zip" . -x '.vite/*'
