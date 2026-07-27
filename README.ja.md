@@ -1,8 +1,14 @@
 # Foldable View for GitHub
 
+<div align="right">
+
 [English](./README.md) | 日本語
 
+</div>
+
 GitHub のファイルビューにコード折りたたみを足す拡張。インデントで畳み、指定した深さまで一括で閉じられる。
+
+**[Chrome ウェブストアからインストール](https://chromewebstore.google.com/detail/foldable-view-for-github/kkjejoecddgihebkjgkafmaghopgicoe)**
 
 ![github.com の JSON ファイルを深さ 2 まで畳んだ状態](docs/verify/2-fold-l2.png)
 
@@ -50,9 +56,10 @@ diff は断片しか含まないためインデントでは畳めない。Files 
 
 ## インストール
 
-Chrome Web Store は審査中。公開までは自分でビルドして `dist/` を
-「パッケージ化されていない拡張機能」として読み込む。手順は
-[DEVELOPMENT.md](./DEVELOPMENT.md) にある。
+[Chrome ウェブストアからインストール](https://chromewebstore.google.com/detail/foldable-view-for-github/kkjejoecddgihebkjgkafmaghopgicoe)
+
+自分でビルドして `dist/` を「パッケージ化されていない拡張機能」として読み込む場合は
+[DEVELOPMENT.md](./DEVELOPMENT.md) を参照。
 
 ## プライバシー
 
