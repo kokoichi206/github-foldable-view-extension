@@ -20,6 +20,34 @@ export interface FoldableViewer {
   destroy: () => void;
 }
 
+/* 折りたたみマーカーは GitHub 本家と同じ octicon (chevron-down-16 / chevron-right-16) を使う。
+   文字グリフ (⌄ 等) はフォント依存で角度が急になるため使わない。
+   path は https://github.com/primer/octicons (MIT) の icons/chevron-*-16.svg と揃えること */
+const OCTICON_CHEVRON_DOWN =
+  "M12.78 5.22a.749.749 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.06 0L3.22 6.28a.749.749 0 1 1 1.06-1.06L8 8.939l3.72-3.719a.749.749 0 0 1 1.06 0Z";
+const OCTICON_CHEVRON_RIGHT =
+  "M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z";
+
+/* innerHTML は GitHub 側の CSP (Trusted Types) に弾かれうるため DOM API で組み立てる */
+const foldMarker = (open: boolean): HTMLElement => {
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("width", "16");
+  svg.setAttribute("height", "16");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("aria-hidden", "true");
+
+  const path = document.createElementNS(SVG_NS, "path");
+  path.setAttribute("fill", "currentColor");
+  path.setAttribute("d", open ? OCTICON_CHEVRON_DOWN : OCTICON_CHEVRON_RIGHT);
+  svg.appendChild(path);
+
+  const marker = document.createElement("span");
+  marker.className = "cm-foldMarker";
+  marker.appendChild(svg);
+  return marker;
+};
+
 /* 配色は GitHub がページに公開している CSS 変数を参照し、テーマ切替に自動追従する。
    フォント・行高・ガター幅は本家コードビューの実測値 (12px/20px, 行番号 40px + 右 16px) に合わせる */
 const baseTheme = EditorView.theme({
@@ -42,6 +70,17 @@ const baseTheme = EditorView.theme({
   ".cm-lineNumbers .cm-gutterElement": {
     minWidth: "40px",
     paddingRight: "16px",
+  },
+  ".cm-foldGutter .cm-gutterElement": {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "16px",
+    cursor: "pointer",
+  },
+  ".cm-foldMarker": {
+    display: "inline-flex",
+    alignItems: "center",
   },
   ".cm-foldPlaceholder": {
     backgroundColor: "var(--bgColor-muted, #f6f8fa)",
@@ -79,8 +118,7 @@ export function createViewer(
         }),
         indentFold,
         foldGutter({
-          openText: "⌄",
-          closedText: "›",
+          markerDOM: foldMarker,
         }),
         languageForFilename(filename) ?? [],
         baseTheme,
