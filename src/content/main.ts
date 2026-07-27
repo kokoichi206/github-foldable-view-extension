@@ -96,12 +96,12 @@ function renderControls(): void {
 
   const { viewer } = active;
   controls.dataset.gfvState = "on";
-  addButton("expand", "すべて展開", () => viewer.unfoldAllRanges());
+  addButton("expand", "Expand all", () => viewer.unfoldAllRanges());
   addButton("l1", "L1", () => viewer.foldToLevel(1));
   addButton("l2", "L2", () => viewer.foldToLevel(2));
   addButton("l3", "L3", () => viewer.foldToLevel(3));
-  addButton("fold-all", "すべて畳む", () => viewer.foldAllRanges());
-  addButton("deactivate", "GitHub 表示に戻す", () => {
+  addButton("fold-all", "Fold all", () => viewer.foldAllRanges());
+  addButton("deactivate", "GitHub view", () => {
     localStorage.setItem(AUTO_PREF_KEY, "off");
     deactivate();
   });
@@ -177,11 +177,11 @@ function prFoldControls(viewer: FoldableViewer): HTMLElement {
     b.addEventListener("click", handler);
     controls.appendChild(b);
   };
-  addButton("expand", "すべて展開", () => viewer.unfoldAllRanges());
+  addButton("expand", "Expand all", () => viewer.unfoldAllRanges());
   addButton("l1", "L1", () => viewer.foldToLevel(1));
   addButton("l2", "L2", () => viewer.foldToLevel(2));
   addButton("l3", "L3", () => viewer.foldToLevel(3));
-  addButton("fold-all", "すべて畳む", () => viewer.foldAllRanges());
+  addButton("fold-all", "Fold all", () => viewer.foldAllRanges());
   return controls;
 }
 
@@ -203,7 +203,7 @@ async function togglePrViewer(
   }
 
   button.disabled = true;
-  button.textContent = "読込中…";
+  button.textContent = "Loading…";
   try {
     const res = await fetch(rawUrlFromBlobUrl(entry.blobUrl));
     if (!res.ok) throw new Error(`raw fetch failed: ${res.status}`);
@@ -222,10 +222,10 @@ async function togglePrViewer(
     panel.insertBefore(prFoldControls(viewer), viewerHost);
 
     prViewers.set(entry.container, { viewer, panel });
-    button.textContent = "Diff に戻す";
+    button.textContent = "Diff view";
   } catch (err) {
-    console.error("[gfv] PR ファイル全文の取得に失敗", entry.path, err);
-    button.textContent = "取得失敗 (再試行)";
+    console.error("[gfv] failed to fetch the full file", entry.path, err);
+    button.textContent = "Retry";
   } finally {
     button.disabled = false;
   }
