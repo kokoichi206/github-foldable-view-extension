@@ -1,8 +1,14 @@
 # Foldable View for GitHub
 
+<div align="right">
+
 English | [日本語](./README.ja.md)
 
+</div>
+
 Code folding for the GitHub file view: fold by indent, collapse to a chosen depth.
+
+**[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/foldable-view-for-github/kkjejoecddgihebkjgkafmaghopgicoe)**
 
 ![A JSON file on github.com collapsed to depth 2](docs/verify/2-fold-l2.png)
 
@@ -53,8 +59,9 @@ depth controls apply from there.
 
 ## Install
 
-The Chrome Web Store listing is pending review. Until it is live, build from
-source and load `dist/` as an unpacked extension — see
+[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/foldable-view-for-github/kkjejoecddgihebkjgkafmaghopgicoe)
+
+To build it yourself and load `dist/` as an unpacked extension, see
 [DEVELOPMENT.md](./DEVELOPMENT.md).
 
 ## Privacy
