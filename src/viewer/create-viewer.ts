@@ -6,8 +6,8 @@ import {
   unfoldAll,
   syntaxHighlighting,
 } from "@codemirror/language";
-import { EditorState } from "@codemirror/state";
-import { EditorView, lineNumbers } from "@codemirror/view";
+import { EditorState, RangeSetBuilder } from "@codemirror/state";
+import { Decoration, EditorView, lineNumbers } from "@codemirror/view";
 import { githubHighlightStyle } from "./github-highlight";
 import { computeFoldRanges, type FoldRange } from "./indent-fold";
 import { languageForFilename } from "./languages";
@@ -87,12 +87,36 @@ const baseTheme = EditorView.theme({
     border: "1px solid var(--borderColor-default, #d1d9e0)",
     color: "var(--fgColor-muted, #59636e)",
   },
+  ".cm-gfvChangedLine": {
+    backgroundColor:
+      "var(--diffBlob-additionLine-bgColor, var(--bgColor-success-muted, #dafbe1))",
+  },
 });
+
+const changedLineDecoration = Decoration.line({ class: "cm-gfvChangedLine" });
+
+/* PR diff の追加行を全文ビュー上でマークする。doc は readonly なので静的な RangeSet でよい */
+function changedLineHighlight(lines: string[], highlightLines: number[]) {
+  const lineStartOffsets: number[] = [0];
+  for (const line of lines) {
+    const last = lineStartOffsets[lineStartOffsets.length - 1] ?? 0;
+    lineStartOffsets.push(last + line.length + 1);
+  }
+
+  const builder = new RangeSetBuilder<Decoration>();
+  for (const n of [...new Set(highlightLines)].sort((a, b) => a - b)) {
+    const offset = lineStartOffsets[n - 1];
+    if (n < 1 || n > lines.length || offset === undefined) continue;
+    builder.add(offset, offset, changedLineDecoration);
+  }
+  return EditorView.decorations.of(builder.finish());
+}
 
 export function createViewer(
   parent: HTMLElement,
   text: string,
   filename: string,
+  options?: { highlightLines?: number[] },
 ): FoldableViewer {
   const lines = text.split("\n");
   const ranges = computeFoldRanges(lines);
@@ -121,6 +145,9 @@ export function createViewer(
           markerDOM: foldMarker,
         }),
         languageForFilename(filename) ?? [],
+        options?.highlightLines !== undefined && options.highlightLines.length > 0
+          ? changedLineHighlight(lines, options.highlightLines)
+          : [],
         baseTheme,
         syntaxHighlighting(githubHighlightStyle),
         EditorState.readOnly.of(true),

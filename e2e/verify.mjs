@@ -9,6 +9,8 @@ const TARGET_URL =
   "https://github.com/kokoichi206/dotfiles/blob/main/superwhisper/settings.json";
 const GO_TARGET_URL =
   "https://github.com/kokoichi206/slack-cli/blob/main/internal/config/project.go";
+const PR_TARGET_URL = "https://github.com/kokoichi206/gh-actions/pull/1/files";
+const PR_TARGET_FILE = "lint-workflows/src/main.ts";
 const SCREENSHOT_DIR = "docs/verify";
 
 const failures = [];
@@ -127,6 +129,38 @@ try {
   });
   check("Go ファイルでもハイライトが当たる (静的バンドル)", goHighlighted);
   await page.screenshot({ path: `${SCREENSHOT_DIR}/4-go-highlight.png` });
+
+  await page.goto(PR_TARGET_URL, { waitUntil: "domcontentloaded" });
+  const prFile = page.locator(`.file[data-tagsearch-path="${PR_TARGET_FILE}"]`);
+  const prToggle = prFile.locator(".gfv-pr-toggle");
+  await prToggle.waitFor({ state: "visible", timeout: 20_000 });
+  check("PR files ページの各ファイルに Foldable ボタンが出る", true);
+
+  await prToggle.click();
+  await prFile
+    .locator(".gfv-pr-panel .cm-editor")
+    .waitFor({ state: "visible", timeout: 20_000 });
+  check("Foldable 全文ビューが開く (raw fetch)", true);
+  await page.waitForTimeout(500);
+
+  const changedCount = await prFile.locator(".cm-gfvChangedLine").count();
+  check("変更行ハイライトが乗る", changedCount > 0, `${changedCount} 行`);
+
+  await prFile.locator('[data-gfv-pr-action="fold-all"]').click();
+  await page.waitForTimeout(300);
+  const prPlaceholders = await prFile.locator(".cm-foldPlaceholder").count();
+  check("PR ビューでも折りたたみが効く", prPlaceholders > 0,
+    `placeholders=${prPlaceholders}`);
+  await prFile.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: `${SCREENSHOT_DIR}/5-pr-files.png` });
+
+  await prToggle.click();
+  await page.waitForTimeout(300);
+  const prEditorGone = (await prFile.locator(".cm-editor").count()) === 0;
+  const diffVisible = await prFile
+    .locator(".js-file-content")
+    .evaluate((el) => el.style.display !== "none");
+  check("Diff 表示に戻せる", prEditorGone && diffVisible);
 
   check("CSP 違反が発生しない", cspViolations.length === 0,
     `${cspViolations.length} 件`);

@@ -5,6 +5,15 @@ import {
   findSourceTextarea,
   isBlobPage,
 } from "./github-page";
+import {
+  addedLineNumbers,
+  findDiffContent,
+  findFileActions,
+  findDiffFileEntries,
+  isPrFilesPage,
+  rawUrlFromBlobUrl,
+  type DiffFileEntry,
+} from "./pr-files-page";
 
 const CONTROLS_ID = "gfv-controls";
 const PANEL_ID = "gfv-panel";
@@ -41,6 +50,12 @@ function injectStylesOnce(): void {
   box-shadow: var(--shadow-resting-small, 0 1px 3px rgba(0,0,0,.2));
 }
 #${PANEL_ID} .cm-editor { max-width: 100%; }
+.gfv-pr-toggle { margin-right: 8px; }
+.gfv-pr-controls {
+  display: flex; gap: 6px; align-items: center;
+  padding: 8px; border-bottom: 1px solid var(--borderColor-default, #d1d9e0);
+}
+.gfv-pr-panel .cm-editor { max-width: 100%; }
 `;
   document.head.appendChild(style);
 }
@@ -133,10 +148,107 @@ function deactivate(): void {
   renderControls();
 }
 
+/* ---- PR "Files changed" ページ: ファイル単位の Foldable 全文ビュー ----
+   diff は hunk 断片でインデント構造が完結しないため、diff 自体は畳まず
+   「head 全文 + 変更行ハイライト」のビューに切り替える形にする。
+   React/turbo が DOM を差し替えても WeakMap 側は自然に無効化される */
+const prViewers = new WeakMap<
+  HTMLElement,
+  { viewer: FoldableViewer; panel: HTMLElement }
+>();
+const PR_TOGGLE_CLASS = "gfv-pr-toggle";
+
+function prFoldControls(viewer: FoldableViewer): HTMLElement {
+  const controls = document.createElement("div");
+  controls.className = "gfv-pr-controls";
+  const addButton = (action: string, label: string, handler: () => void): void => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "btn btn-sm";
+    b.dataset.gfvPrAction = action;
+    b.textContent = label;
+    b.addEventListener("click", handler);
+    controls.appendChild(b);
+  };
+  addButton("expand", "すべて展開", () => viewer.unfoldAllRanges());
+  addButton("l1", "L1", () => viewer.foldToLevel(1));
+  addButton("l2", "L2", () => viewer.foldToLevel(2));
+  addButton("l3", "L3", () => viewer.foldToLevel(3));
+  addButton("fold-all", "すべて畳む", () => viewer.foldAllRanges());
+  return controls;
+}
+
+async function togglePrViewer(
+  entry: DiffFileEntry,
+  button: HTMLButtonElement,
+): Promise<void> {
+  const content = findDiffContent(entry.container);
+  if (content === null) return;
+
+  const existing = prViewers.get(entry.container);
+  if (existing !== undefined) {
+    existing.viewer.destroy();
+    existing.panel.remove();
+    prViewers.delete(entry.container);
+    content.style.display = "";
+    button.textContent = "Foldable";
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = "読込中…";
+  try {
+    const res = await fetch(rawUrlFromBlobUrl(entry.blobUrl));
+    if (!res.ok) throw new Error(`raw fetch failed: ${res.status}`);
+    const text = await res.text();
+
+    const highlightLines = addedLineNumbers(entry.container);
+    const panel = document.createElement("div");
+    panel.className = "gfv-pr-panel";
+    const viewerHost = document.createElement("div");
+    panel.appendChild(viewerHost);
+
+    content.insertAdjacentElement("beforebegin", panel);
+    content.style.display = "none";
+
+    const viewer = createViewer(viewerHost, text, entry.path, { highlightLines });
+    panel.insertBefore(prFoldControls(viewer), viewerHost);
+
+    prViewers.set(entry.container, { viewer, panel });
+    button.textContent = "Diff に戻す";
+  } catch (err) {
+    console.error("[gfv] PR ファイル全文の取得に失敗", entry.path, err);
+    button.textContent = "取得失敗 (再試行)";
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function ensurePrFoldButtons(): void {
+  if (!isPrFilesPage()) return;
+  injectStylesOnce();
+  for (const entry of findDiffFileEntries()) {
+    if (entry.deleted) continue;
+    const actions = findFileActions(entry.container);
+    if (actions === null) continue;
+    if (actions.querySelector(`.${PR_TOGGLE_CLASS}`) !== null) continue;
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `btn btn-sm ${PR_TOGGLE_CLASS}`;
+    button.textContent = "Foldable";
+    button.addEventListener("click", () => {
+      void togglePrViewer(entry, button);
+    });
+    actions.prepend(button);
+  }
+}
+
 function reinit(): void {
   if (active !== null) deactivate();
   document.getElementById(CONTROLS_ID)?.remove();
   ensureControls();
+  ensurePrFoldButtons();
 }
 
 /* GitHub は soft navigation (turbo) で遷移し、コード部は React ハイドレーション後に
@@ -153,6 +265,8 @@ setInterval(() => {
     return;
   }
   ensureControls();
+  ensurePrFoldButtons();
 }, 500);
 
 ensureControls();
+ensurePrFoldButtons();
