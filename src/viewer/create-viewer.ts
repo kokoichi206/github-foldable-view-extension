@@ -12,8 +12,9 @@ import { githubHighlightStyle } from "./github-highlight";
 import { computeFoldRanges, type FoldRange } from "./indent-fold";
 import { languageForFilename } from "./languages";
 
+/* CodeMirror の型は意図的に露出させない。呼び出し側との契約を振る舞いだけに保ち、
+   エディタライブラリ変更の影響を src/viewer/ 配下に閉じ込める */
 export interface FoldableViewer {
-  view: EditorView;
   foldToLevel: (level: number) => void;
   foldAllRanges: () => void;
   unfoldAllRanges: () => void;
@@ -171,7 +172,6 @@ export function createViewer(
   };
 
   return {
-    view,
     foldToLevel: (level: number) =>
       foldRanges(ranges.filter((r) => r.depth >= level)),
     foldAllRanges: () => foldRanges(ranges),
