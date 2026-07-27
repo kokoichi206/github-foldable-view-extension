@@ -14,8 +14,8 @@ permissions:
   contents: write
 
 env:
-  # 初回の手動申請で発行される拡張 ID。ストア URL の末尾と同じ値
-  CWS_EXTENSION_ID: ""
+  # ストア URL の末尾と同じ値。アイテムを作り直さない限り変わらない
+  CWS_EXTENSION_ID: kkjejoecddgihebkjgkafmaghopgicoe
 
 jobs:
   release:
