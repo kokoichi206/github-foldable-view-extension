@@ -1,0 +1,93 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  # 初回の手動申請で発行される拡張 ID。ストア URL の末尾と同じ値
+  CWS_EXTENSION_ID: ""
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # タグ名にはシェルのメタ文字が使えるため、run へは env 経由でのみ渡すこと
+    env:
+      TAG_REF: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Verify extension id is configured
+        run: |
+          if [ -z "$CWS_EXTENSION_ID" ]; then
+            echo "::error::CWS_EXTENSION_ID is empty. Publish the extension manually once, then set the issued id in .github/workflows/release.yml"
+            exit 1
+          fi
+
+      - name: Verify tag matches package.json
+        run: |
+          TAG="${TAG_REF#v}"
+          PKG=$(jq -r .version package.json)
+          echo "tag=$TAG package.json=$PKG"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::Version mismatch: tag=v$TAG package.json=$PKG"
+            exit 1
+          fi
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Verify built manifest matches tag
+        run: |
+          TAG="${TAG_REF#v}"
+          BUILT=$(jq -r .version dist/manifest.json)
+          echo "tag=$TAG dist/manifest.json=$BUILT"
+          if [ "$TAG" != "$BUILT" ]; then
+            echo "::error::Version mismatch: tag=v$TAG dist/manifest.json=$BUILT"
+            exit 1
+          fi
+
+      # Chrome Web Store は manifest.json が zip 直下にあることを要求する
+      - name: Create zip
+        run: |
+          cd dist && zip -r "../foldable-view-for-github-${TAG_REF}.zip" .
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          files: foldable-view-for-github-${{ inputs.tag || github.ref_name }}.zip
+
+      - name: Publish to Chrome Web Store
+        uses: kokoichi206/chrome-webstore-publish@v0.1.0
+        with:
+          service-account-key-json: ${{ secrets.GOOGLE_SA_KEY_JSON }}
+          extension-id: ${{ env.CWS_EXTENSION_ID }}
+          publisher-id: ${{ vars.CWS_PUBLISHER_ID }}
+          zip-path: foldable-view-for-github-${{ inputs.tag || github.ref_name }}.zip

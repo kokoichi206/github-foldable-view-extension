@@ -1,0 +1,17 @@
+<!-- 拡張アイコンの生成元。PNG は `pnpm icons` で作り直す。
+     Chrome Web Store の 128px アイコン仕様に合わせ、
+     図案は中央 96x96 に収め、周囲 16px を透明のまま残すこと。
+     16px に縮小しても潰れないよう、線は太く要素数は最小限に保つこと -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect x="16" y="16" width="96" height="96" rx="22" fill="#1f2328" />
+  <rect x="32" y="31" width="64" height="12" rx="6" fill="#e6edf3" />
+  <path
+    d="M43 55 L64 73 L85 55"
+    fill="none"
+    stroke="#58a6ff"
+    stroke-width="14"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <rect x="32" y="85" width="48" height="12" rx="6" fill="#e6edf3" />
+</svg>

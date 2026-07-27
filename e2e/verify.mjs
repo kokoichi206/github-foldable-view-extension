@@ -27,6 +27,8 @@ const context = await chromium.launchPersistentContext(
   {
     // 拡張の読み込みは headless shell では動かないため headed で実行する
     headless: false,
+    // Chrome Web Store が受け付けるスクリーンショットは 1280x800 か 640x400 のみ
+    viewport: { width: 1280, height: 800 },
     args: [
       `--disable-extensions-except=${extensionPath}`,
       `--load-extension=${extensionPath}`,
