@@ -9,12 +9,19 @@ on:
       tag:
         required: true
         type: string
+  # tag.yml が落ちてタグだけ残った場合、そのタグを指定して release を回し直す口
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to release (e.g. v0.1.1)
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 env:
-  # ストア URL の末尾と同じ値。アイテムを作り直さない限り変わらない
+  # ストア URL の末尾と同じ値
   CWS_EXTENSION_ID: kkjejoecddgihebkjgkafmaghopgicoe
 
 jobs:
@@ -24,6 +31,8 @@ jobs:
     # タグ名にはシェルのメタ文字が使えるため、run へは env 経由でのみ渡すこと
     env:
       TAG_REF: ${{ inputs.tag || github.ref_name }}
+      # secrets は step の if から参照できないため、job の env で真偽値に畳む
+      HAS_CWS_CREDENTIALS: ${{ secrets.GOOGLE_SA_KEY_JSON != '' && vars.CWS_PUBLISHER_ID != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -87,6 +96,7 @@ jobs:
           files: foldable-view-for-github-${{ inputs.tag || github.ref_name }}.zip
 
       - name: Publish to Chrome Web Store
+        if: env.HAS_CWS_CREDENTIALS == 'true'
         uses: kokoichi206/chrome-webstore-publish@v0.1.0
         with:
           service-account-key-json: ${{ secrets.GOOGLE_SA_KEY_JSON }}
