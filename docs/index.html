@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Foldable View for GitHub</title>
+    <style>
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        max-width: 680px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+        line-height: 1.7;
+        color: #202124;
+      }
+      h1 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+      }
+      h2 {
+        font-size: 1.15rem;
+        margin-top: 2rem;
+      }
+      p {
+        margin: 0.75rem 0;
+      }
+      ul {
+        padding-left: 1.25rem;
+      }
+      li {
+        margin: 0.35rem 0;
+      }
+      img {
+        width: 100%;
+        margin-top: 1rem;
+        border: 1px solid #dadce0;
+        border-radius: 6px;
+      }
+      .lead {
+        color: #5f6368;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Foldable View for GitHub</h1>
+    <p class="lead">
+      Code folding for the GitHub file view: fold by indent, collapse to a
+      chosen depth.
+    </p>
+
+    <!-- スクリーンショットは pnpm e2e が生成する。ファイル名は e2e/verify.mjs と揃えること -->
+    <img
+      src="verify/2-fold-l2.png"
+      alt="A JSON file on github.com collapsed to depth 2 by the extension"
+    />
+
+    <h2>What it does</h2>
+    <ul>
+      <li>
+        Folds by indentation, so it behaves the same in Go, Python, YAML, JSON,
+        Markdown, and anything else that expresses structure through
+        indentation.
+      </li>
+      <li>
+        L1 / L2 / L3 collapse the entire file to a chosen depth in one click.
+      </li>
+      <li>Syntax highlighting chosen from the file extension.</li>
+      <li>Follows GitHub's light and dark themes.</li>
+      <li>
+        On pull request "Files changed" pages, switch any file from the diff to
+        its full source with the changed lines highlighted, then fold it.
+      </li>
+    </ul>
+
+    <h2>Links</h2>
+    <ul>
+      <li>
+        <a href="https://github.com/kokoichi206/github-foldable-view-extension">
+          Source code on GitHub
+        </a>
+      </li>
+      <li><a href="./privacy-policy.html">Privacy policy</a></li>
+    </ul>
+  </body>
+</html>
